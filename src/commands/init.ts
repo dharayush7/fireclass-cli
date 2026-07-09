@@ -80,9 +80,17 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     return;
   }
 
-  // Framework.
+  // Framework. In --yes mode never prompt: use the detected/passed value or bail.
   let framework = options.framework ?? detectFramework(pkg) ?? undefined;
-  if (!options.yes || !framework) {
+  if (options.yes) {
+    if (!framework) {
+      p.cancel(
+        "Could not detect a framework. Re-run with --framework <next|react|express>.",
+      );
+      process.exitCode = 1;
+      return;
+    }
+  } else {
     framework = guard(
       await p.select<Framework>({
         message: "Which framework are you using?",
@@ -96,9 +104,11 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     );
   }
 
-  // Package manager.
+  // Package manager. In --yes mode fall back to npm rather than prompting.
   let pm = options.pm ?? detectPackageManager(root) ?? undefined;
-  if (!options.yes || !pm) {
+  if (options.yes) {
+    pm = pm ?? "npm";
+  } else {
     pm = guard(
       await p.select<PackageManager>({
         message: "Package manager",
