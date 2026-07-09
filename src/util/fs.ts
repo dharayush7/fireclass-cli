@@ -4,7 +4,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 export function exists(path: string): boolean {
   return existsSync(path);
@@ -68,64 +68,145 @@ export function ensureGitignore(root: string, entry: string): boolean {
   return true;
 }
 
-/** Read-only check of the tsconfig decorator flags (for `doctor`). */
-export function tsconfigDecoratorStatus(
-  root: string,
-): "enabled" | "missing" | "manual" | "none" {
-  const path = join(root, "tsconfig.json");
-  if (!existsSync(path)) return "none";
+interface TsconfigShape {
+  compilerOptions?: {
+    experimentalDecorators?: boolean;
+    emitDecoratorMetadata?: boolean;
+  };
+  include?: unknown[];
+  references?: { path?: string }[];
+}
+
+function parseTsconfig(file: string): TsconfigShape | null {
+  if (!existsSync(file)) return null;
   try {
-    const parsed = JSON.parse(readFileSync(path, "utf8")) as {
-      compilerOptions?: {
-        experimentalDecorators?: boolean;
-        emitDecoratorMetadata?: boolean;
-      };
-    };
-    const o = parsed.compilerOptions ?? {};
-    return o.experimentalDecorators && o.emitDecoratorMetadata
-      ? "enabled"
-      : "missing";
+    return JSON.parse(readFileSync(file, "utf8")) as TsconfigShape;
   } catch {
-    return "manual";
+    return null; // jsonc (comments/trailing commas)
+  }
+}
+
+function includesSrc(cfg: TsconfigShape | null): boolean {
+  return (
+    !!cfg &&
+    Array.isArray(cfg.include) &&
+    cfg.include.some((i) => String(i).includes("src"))
+  );
+}
+
+/**
+ * The tsconfig file(s) that actually compile the app's `src` — so decorator
+ * flags land where TypeScript uses them. Handles the Vite split-config layout
+ * (`tsconfig.json` → references → `tsconfig.app.json`) as well as a single
+ * `tsconfig.json`.
+ */
+function resolveTsconfigTargets(root: string): string[] {
+  const rootPath = join(root, "tsconfig.json");
+  const rootCfg = parseTsconfig(rootPath);
+  const targets: string[] = [];
+
+  for (const ref of rootCfg?.references ?? []) {
+    if (!ref?.path) continue;
+    let refPath = resolve(root, ref.path);
+    if (existsSync(refPath) && !refPath.endsWith(".json")) {
+      refPath = join(refPath, "tsconfig.json");
+    }
+    const refCfg = parseTsconfig(refPath);
+    // The app config (compiles src) — e.g. tsconfig.app.json.
+    if (
+      (refCfg && includesSrc(refCfg)) ||
+      basename(refPath) === "tsconfig.app.json"
+    ) {
+      targets.push(refPath);
+    }
+  }
+
+  // Fall back to the root when it carries the src compilerOptions itself
+  // (single-file layout) or when no referenced src config was found.
+  const rootHasOptions = !!rootCfg && rootCfg.compilerOptions !== undefined;
+  const noRefs = (rootCfg?.references?.length ?? 0) === 0;
+  if ((rootHasOptions && (includesSrc(rootCfg) || noRefs)) || targets.length === 0) {
+    targets.push(rootPath);
+  }
+
+  return [...new Set(targets)];
+}
+
+function hasDecoratorFlags(raw: string): boolean {
+  return (
+    /"experimentalDecorators"\s*:\s*true/.test(raw) &&
+    /"emitDecoratorMetadata"\s*:\s*true/.test(raw)
+  );
+}
+
+/** Patch one tsconfig file (JSON cleanly, or jsonc via comment-safe insert). */
+function patchOneTsconfig(file: string): "patched" | "already" | "manual" {
+  if (!existsSync(file)) return "manual";
+  const raw = readFileSync(file, "utf8");
+  if (hasDecoratorFlags(raw)) return "already";
+
+  try {
+    const cfg = JSON.parse(raw) as TsconfigShape;
+    cfg.compilerOptions = {
+      ...(cfg.compilerOptions ?? {}),
+      experimentalDecorators: true,
+      emitDecoratorMetadata: true,
+    };
+    writeFile(file, `${JSON.stringify(cfg, null, 2)}\n`);
+    return "patched";
+  } catch {
+    // jsonc: insert the missing flags right after the compilerOptions brace,
+    // preserving comments/formatting.
+    const m = raw.match(/"compilerOptions"\s*:\s*\{/);
+    if (!m || m.index === undefined) return "manual";
+    const at = m.index + m[0].length;
+    const inject: string[] = [];
+    if (!/"experimentalDecorators"\s*:\s*true/.test(raw))
+      inject.push('    "experimentalDecorators": true,');
+    if (!/"emitDecoratorMetadata"\s*:\s*true/.test(raw))
+      inject.push('    "emitDecoratorMetadata": true,');
+    writeFile(file, raw.slice(0, at) + `\n${inject.join("\n")}` + raw.slice(at));
+    return "patched";
   }
 }
 
 export type TsconfigPatchResult = "patched" | "already" | "manual" | "none";
 
 /**
- * Ensure `experimentalDecorators` and `emitDecoratorMetadata` are enabled in
- * tsconfig.json. Returns:
- * - "none"    — no tsconfig.json
- * - "already" — both flags already set
- * - "patched" — flags added and written
- * - "manual"  — tsconfig has comments/trailing commas we won't rewrite; caller
- *               should tell the user to add the flags by hand
+ * Ensure `experimentalDecorators` + `emitDecoratorMetadata` in the tsconfig(s)
+ * that compile the app's src (following `references`). Returns "none" if there
+ * is no tsconfig, "manual" if a target couldn't be safely edited.
  */
 export function patchTsconfigDecorators(root: string): TsconfigPatchResult {
-  const path = join(root, "tsconfig.json");
-  if (!existsSync(path)) return "none";
-  const raw = readFileSync(path, "utf8");
+  if (!existsSync(join(root, "tsconfig.json"))) return "none";
+  const targets = resolveTsconfigTargets(root);
+  if (targets.length === 0) return "manual";
 
-  let parsed: {
-    compilerOptions?: {
-      experimentalDecorators?: boolean;
-      emitDecoratorMetadata?: boolean;
-    };
-  };
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return "manual"; // jsonc with comments/trailing commas — don't risk it
+  let patched = false;
+  let manual = false;
+  let already = 0;
+  for (const t of targets) {
+    const r = patchOneTsconfig(t);
+    if (r === "patched") patched = true;
+    else if (r === "manual") manual = true;
+    else already += 1;
   }
+  if (patched) return "patched";
+  if (manual) return "manual";
+  if (already === targets.length) return "already";
+  return "manual";
+}
 
-  const opts = parsed.compilerOptions ?? {};
-  if (opts.experimentalDecorators && opts.emitDecoratorMetadata) return "already";
-
-  parsed.compilerOptions = {
-    ...opts,
-    experimentalDecorators: true,
-    emitDecoratorMetadata: true,
-  };
-  writeFile(path, `${JSON.stringify(parsed, null, 2)}\n`);
-  return "patched";
+/** Read-only check of the decorator flags across the src tsconfig(s). */
+export function tsconfigDecoratorStatus(
+  root: string,
+): "enabled" | "missing" | "manual" | "none" {
+  if (!existsSync(join(root, "tsconfig.json"))) return "none";
+  const targets = resolveTsconfigTargets(root);
+  if (targets.length === 0) return "missing";
+  for (const t of targets) {
+    if (!existsSync(t)) return "missing";
+    if (!hasDecoratorFlags(readFileSync(t, "utf8"))) return "missing";
+  }
+  return "enabled";
 }

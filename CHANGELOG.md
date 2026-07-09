@@ -22,5 +22,14 @@ First public release of the Fireclass CLI.
 - `list` (`ls`) — lists models (class + collection) in the models directory.
 - `config` — prints the resolved `fireclass.json`.
 - `--help` / `--version`, plus the `fc` bin alias.
-- 45 tests covering detection, templates, generation, idempotency, and each
+- 46 tests covering detection, templates, generation, idempotency, and each
   command's pure logic.
+
+### tsconfig handling
+
+- The decorator patch follows tsconfig `references` and targets the config that
+  actually compiles `src` (e.g. `tsconfig.app.json` in a Vite split layout),
+  rather than only the root `tsconfig.json` — fixing the `ts(1240)` "unable to
+  resolve signature of property decorator" error. Comment-containing (jsonc)
+  configs are edited in place without losing comments. `doctor` checks the same
+  effective config(s).

@@ -67,9 +67,37 @@ describe("patchTsconfigDecorators", () => {
     );
     expect(patchTsconfigDecorators(dir)).toBe("already");
   });
-  it("reports manual for jsonc with comments", () => {
-    writeFileSync(join(dir, "tsconfig.json"), '{\n  // a comment\n  "compilerOptions": {}\n}');
-    expect(patchTsconfigDecorators(dir)).toBe("manual");
+  it("inserts flags into a jsonc tsconfig without destroying comments", () => {
+    writeFileSync(
+      join(dir, "tsconfig.json"),
+      '{\n  // keep me\n  "compilerOptions": {\n    "strict": true\n  }\n}',
+    );
+    expect(patchTsconfigDecorators(dir)).toBe("patched");
+    const out = readFileSync(join(dir, "tsconfig.json"), "utf8");
+    expect(out).toContain("// keep me");
+    expect(out).toContain('"experimentalDecorators": true');
+    expect(out).toContain('"emitDecoratorMetadata": true');
+  });
+
+  it("patches the referenced app config in a Vite split layout, not the root", () => {
+    // root just references the app/node configs (create-vite style)
+    writeFileSync(
+      join(dir, "tsconfig.json"),
+      JSON.stringify({ files: [], references: [{ path: "./tsconfig.app.json" }] }),
+    );
+    writeFileSync(
+      join(dir, "tsconfig.app.json"),
+      JSON.stringify({ compilerOptions: { strict: true }, include: ["src"] }),
+    );
+    expect(patchTsconfigDecorators(dir)).toBe("patched");
+
+    const app = JSON.parse(readFileSync(join(dir, "tsconfig.app.json"), "utf8"));
+    expect(app.compilerOptions.experimentalDecorators).toBe(true);
+    expect(app.compilerOptions.emitDecoratorMetadata).toBe(true);
+
+    // root untouched (no compilerOptions injected there)
+    const root = JSON.parse(readFileSync(join(dir, "tsconfig.json"), "utf8"));
+    expect(root.compilerOptions).toBeUndefined();
   });
 });
 
