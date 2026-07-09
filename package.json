@@ -1,0 +1,64 @@
+{
+  "name": "@dharayush7/fireclass-cli",
+  "version": "2.0.8",
+  "description": "The Fireclass CLI — configure a project (Next.js, React, or Express) to use Fireclass: init, generate models, and health-check your setup.",
+  "license": "MIT",
+  "author": {
+    "name": "Ayush Dhar",
+    "email": "contact@ayushdhar.com",
+    "url": "https://www.ayushdhar.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dharayush7/fireclass-cli.git"
+  },
+  "homepage": "https://fireclass.ayushdhar.com",
+  "bugs": {
+    "url": "https://github.com/dharayush7/fireclass-cli/issues"
+  },
+  "keywords": [
+    "firestore",
+    "firebase",
+    "fireclass",
+    "cli",
+    "scaffold",
+    "generator",
+    "init",
+    "nextjs",
+    "react",
+    "express",
+    "orm",
+    "typescript"
+  ],
+  "type": "module",
+  "bin": {
+    "fireclass": "./dist/index.js",
+    "fc": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
