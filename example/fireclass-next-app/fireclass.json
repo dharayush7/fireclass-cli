@@ -1,0 +1,14 @@
+{
+  "$schema": "https://fireclass.ayushdhar.com/schema.json",
+  "version": "2.0.8",
+  "framework": "next",
+  "packageManager": "pnpm",
+  "package": "@dharayush7/fireclass-ssr",
+  "firebase": null,
+  "fireclass": {
+    "path": "lib/fireclass.ts"
+  },
+  "models": {
+    "dir": "models"
+  }
+}
