@@ -5,7 +5,6 @@ import { dependenciesFor, FRAMEWORKS } from "./frameworks";
 import {
   fireclassFileTemplate,
   firebaseFileTemplate,
-  NEXT_ENV_KEYS,
   sampleTodoTemplate,
 } from "./templates";
 import {
@@ -67,7 +66,14 @@ export async function applyInit(
     if (exists(abs)) {
       actions.push({ label: config.firebase.path, status: "referenced" });
     } else {
-      writeFile(abs, firebaseFileTemplate(config.framework, config.firebase.export));
+      writeFile(
+        abs,
+        firebaseFileTemplate(
+          config.framework,
+          config.firebase.export,
+          config.firebase.factory ?? false,
+        ),
+      );
       actions.push({ label: config.firebase.path, status: "created" });
     }
   }
@@ -81,6 +87,7 @@ export async function applyInit(
     config.framework,
     firebaseImport,
     config.firebase?.export ?? "db",
+    config.firebase?.factory ?? false,
   );
   if (exists(fcAbs) && !options.overwriteFireclass) {
     actions.push({ label: config.fireclass.path, status: "skipped" });
@@ -103,15 +110,20 @@ export async function applyInit(
   );
   actions.push({ label: todoRel, status: wroteTodo ? "created" : "skipped" });
 
-  // 5. Env (Next.js).
-  if (info.usesEnv) {
-    const addedLocal = ensureEnvKeys(join(root, ".env.local"), NEXT_ENV_KEYS);
-    ensureEnvKeys(join(root, ".env.example"), NEXT_ENV_KEYS);
-    ensureGitignore(root, ".env.local");
-    actions.push({
-      label: ".env.local",
-      status: addedLocal.length > 0 ? "created" : "skipped",
-    });
+  // 5. Env scaffolding (Next.js -> .env.local; Express -> .env.example).
+  if (info.envKeys) {
+    ensureEnvKeys(join(root, ".env.example"), info.envKeys);
+    if (info.envLocal) {
+      const added = ensureEnvKeys(join(root, ".env.local"), info.envKeys);
+      ensureGitignore(root, ".env.local");
+      actions.push({
+        label: ".env.local",
+        status: added.length > 0 ? "created" : "skipped",
+      });
+    } else {
+      ensureGitignore(root, ".env");
+      actions.push({ label: ".env.example", status: "created" });
+    }
   }
 
   // 6. tsconfig decorator flags.

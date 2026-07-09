@@ -12,8 +12,11 @@ export interface FireclassConfig {
   packageManager: PackageManager;
   /** The installed Fireclass package for this framework. */
   package: string;
-  /** Firestore instance file + export name. `null` for Next.js. */
-  firebase: { path: string; export: string } | null;
+  /**
+   * Firestore file + export. `factory` means the export is a function to call
+   * (`createFireclass(getDb())`). `null` for Next.js.
+   */
+  firebase: { path: string; export: string; factory?: boolean } | null;
   fireclass: { path: string };
   models: { dir: string };
 }

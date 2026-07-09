@@ -9,12 +9,18 @@ export interface FrameworkInfo {
   /** Extra runtime dependencies to install alongside the common ones. */
   extraDeps: string[];
   /**
-   * Whether this framework needs a separate Firestore instance file exporting a
-   * `db`. Next.js does not — `fireclass-ssr` self-initializes via `getFireclass()`.
+   * Whether this framework needs a separate Firestore file. Next.js does not —
+   * `fireclass-ssr` self-initializes via `getFireclass()`.
    */
   needsFirebaseFile: boolean;
-  /** Whether this framework reads admin credentials from env (Next.js). */
-  usesEnv: boolean;
+  /** Default export from the firebase file (react/express). */
+  defaultExport: string;
+  /** Whether the default export is a factory to call — `createFireclass(getDb())`. */
+  defaultFactory: boolean;
+  /** Env keys to scaffold into .env.example (and .env.local when `envLocal`). */
+  envKeys?: Record<string, string>;
+  /** Write a gitignored `.env.local` (Next.js) vs only `.env.example`. */
+  envLocal: boolean;
 }
 
 /** Dependencies every framework needs. */
@@ -24,6 +30,23 @@ export const COMMON_DEPS = [
   "reflect-metadata",
 ];
 
+const FIREBASE_ENV: Record<string, string> = {
+  FIREBASE_PROJECT_ID: "your-project-id",
+  FIREBASE_CLIENT_EMAIL:
+    "firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com",
+  FIREBASE_PRIVATE_KEY:
+    '"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"',
+};
+
+// Express uses the unprefixed names read by the generated getDb() factory.
+const ADMIN_ENV: Record<string, string> = {
+  PROJECT_ID: "your-project-id",
+  CLIENT_EMAIL:
+    "firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com",
+  PRIVATE_KEY:
+    '"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"',
+};
+
 export const FRAMEWORKS: Record<Framework, FrameworkInfo> = {
   next: {
     id: "next",
@@ -31,7 +54,10 @@ export const FRAMEWORKS: Record<Framework, FrameworkInfo> = {
     pkg: "@dharayush7/fireclass-ssr",
     extraDeps: ["firebase-admin", "server-only"],
     needsFirebaseFile: false,
-    usesEnv: true,
+    defaultExport: "",
+    defaultFactory: false,
+    envKeys: FIREBASE_ENV,
+    envLocal: true,
   },
   react: {
     id: "react",
@@ -39,7 +65,9 @@ export const FRAMEWORKS: Record<Framework, FrameworkInfo> = {
     pkg: "@dharayush7/fireclass-react",
     extraDeps: ["firebase"],
     needsFirebaseFile: true,
-    usesEnv: false,
+    defaultExport: "db",
+    defaultFactory: false,
+    envLocal: false,
   },
   express: {
     id: "express",
@@ -47,7 +75,10 @@ export const FRAMEWORKS: Record<Framework, FrameworkInfo> = {
     pkg: "@dharayush7/fireclass-js",
     extraDeps: ["firebase-admin"],
     needsFirebaseFile: true,
-    usesEnv: false,
+    defaultExport: "getDb",
+    defaultFactory: true,
+    envKeys: ADMIN_ENV,
+    envLocal: false,
   },
 };
 

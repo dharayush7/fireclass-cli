@@ -66,6 +66,40 @@ describe("applyInit — react", () => {
   });
 });
 
+const expressConfig: FireclassConfig = {
+  version: "2.0.8",
+  framework: "express",
+  packageManager: "npm",
+  package: "@dharayush7/fireclass-js",
+  firebase: { path: "src/lib/firebase.ts", export: "getDb", factory: true },
+  fireclass: { path: "src/lib/fireclass.ts" },
+  models: { dir: "src/models" },
+};
+
+describe("applyInit — express (getDb factory)", () => {
+  it("scaffolds a getDb() firebase file and calls it in fireclass", async () => {
+    await applyInit(root, expressConfig, { skipInstall: true });
+    expect(read("src/lib/firebase.ts")).toContain("export function getDb(): Firestore");
+    expect(read("src/lib/fireclass.ts")).toContain("createFireclass(getDb())");
+    // env.example (unprefixed admin keys) + gitignore .env, no .env.local
+    expect(read(".env.example")).toContain("PROJECT_ID=");
+    expect(read(".env.example")).toContain("CLIENT_EMAIL=");
+    expect(has(".env.local")).toBe(false);
+    expect(read(".gitignore")).toContain(".env");
+  });
+
+  it("references an existing getDb() file (no overwrite)", async () => {
+    require("node:fs").mkdirSync(join(root, "src/lib"), { recursive: true });
+    require("node:fs").writeFileSync(
+      join(root, "src/lib/firebase.ts"),
+      "export function getDb() { return {} as any; }\n",
+    );
+    const actions = await applyInit(root, expressConfig, { skipInstall: true });
+    expect(actions.find((a) => a.label === "src/lib/firebase.ts")?.status).toBe("referenced");
+    expect(read("src/lib/fireclass.ts")).toContain("createFireclass(getDb())");
+  });
+});
+
 describe("applyInit — next", () => {
   it("skips firebase file, writes server-only fireclass, adds env + gitignore", async () => {
     await applyInit(root, nextConfig, { skipInstall: true });

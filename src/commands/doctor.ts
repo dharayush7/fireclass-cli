@@ -60,8 +60,9 @@ export function doctorChecks(root: string): Check[] {
       });
     } else {
       const src = readFileSync(abs, "utf8");
+      const name = config.firebase.export;
       const found = new RegExp(
-        `export\\s+(const|let|var)\\s+${config.firebase.export}\\b|export\\s*\\{[^}]*\\b${config.firebase.export}\\b`,
+        `export\\s+(const|let|var|(async\\s+)?function)\\s+${name}\\b|export\\s*\\{[^}]*\\b${name}\\b`,
       ).test(src);
       checks.push({
         label: `firebase export "${config.firebase.export}"`,

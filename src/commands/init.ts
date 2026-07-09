@@ -121,19 +121,29 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
       ? defaults.firebase
       : guard(
           await p.text({
-            message: "Firestore instance file (exports your db)",
+            message: "Firestore instance file",
             initialValue: defaults.firebase,
           }),
         );
-    const exportName = options.yes
-      ? "db"
-      : guard(
-          await p.text({
-            message: "Firestore export name",
-            initialValue: "db",
-          }),
+    // Accept a value (`db`) or a factory (`getDb()`). A trailing () means the
+    // export is a function to call: createFireclass(getDb()).
+    const defaultExport = info.defaultFactory
+      ? `${info.defaultExport}()`
+      : info.defaultExport;
+    const rawExport = options.yes
+      ? defaultExport
+      : String(
+          guard(
+            await p.text({
+              message: "Firestore export (a value like `db`, or a factory like `getDb()`)",
+              initialValue: defaultExport,
+            }),
+          ),
         );
-    firebase = { path: String(path), export: String(exportName) };
+    const trimmed = rawExport.trim();
+    const factory = trimmed.endsWith("()");
+    const exportName = trimmed.replace(/\(\)$/, "").trim();
+    firebase = { path: String(path), export: exportName, factory };
   } else {
     p.log.info("Next.js uses env-based credentials — no separate Firestore file needed.");
   }

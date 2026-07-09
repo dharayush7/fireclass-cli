@@ -22,6 +22,12 @@ describe("fireclassFileTemplate", () => {
     expect(out).not.toContain("useQuery");
   });
 
+  it("express factory: calls the exported getDb() function", () => {
+    const out = fireclassFileTemplate("express", "./firebase", "getDb", true);
+    expect(out).toContain('import { getDb } from "./firebase"');
+    expect(out).toContain("createFireclass(getDb())");
+  });
+
   it("next: server-only + getFireclass(), no firebase import", () => {
     const out = fireclassFileTemplate("next", "", "");
     expect(out).toContain('import "server-only"');
@@ -41,6 +47,14 @@ describe("firebaseFileTemplate", () => {
     const out = firebaseFileTemplate("express", "db");
     expect(out).toContain('from "firebase-admin/firestore"');
     expect(out).toContain("export const db = getFirestore()");
+  });
+
+  it("express factory scaffolds a lazy getDb() function", () => {
+    const out = firebaseFileTemplate("express", "getDb", true);
+    expect(out).toContain("export function getDb(): Firestore");
+    expect(out).toContain("if (getApps().length === 0)");
+    expect(out).toContain("process.env.CLIENT_EMAIL");
+    expect(out).toContain("return getFirestore();");
   });
 });
 

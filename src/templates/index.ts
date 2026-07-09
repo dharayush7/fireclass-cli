@@ -11,8 +11,11 @@ export function fireclassFileTemplate(
   framework: Framework,
   firebaseImport: string,
   exportName: string,
+  factory = false,
 ): string {
   const pkg = FRAMEWORKS[framework].pkg;
+  // A factory export is called; a value export is passed directly.
+  const accessor = factory ? `${exportName}()` : exportName;
 
   if (framework === "next") {
     return `import "server-only";
@@ -31,7 +34,7 @@ export { Collection, Subcollection, serialize, serializeList, runAction } from "
 import { createFireclass } from "${pkg}";
 import { ${exportName} } from "${firebaseImport}";
 
-export const { BaseModel, useQuery, useDoc, adapter } = createFireclass(${exportName});
+export const { BaseModel, useQuery, useDoc, adapter } = createFireclass(${accessor});
 
 export { Collection, Subcollection } from "${pkg}";
 `;
@@ -42,7 +45,7 @@ export { Collection, Subcollection } from "${pkg}";
 import { createFireclass } from "${pkg}";
 import { ${exportName} } from "${firebaseImport}";
 
-export const { BaseModel, adapter } = createFireclass(${exportName});
+export const { BaseModel, adapter } = createFireclass(${accessor});
 
 export { Collection, Subcollection, fireclassErrorHandler } from "${pkg}";
 `;
@@ -56,9 +59,10 @@ export { Collection, Subcollection, fireclassErrorHandler } from "${pkg}";
 export function firebaseFileTemplate(
   framework: Framework,
   exportName: string,
+  factory = false,
 ): string {
   if (framework === "react") {
-    return `import { initializeApp } from "firebase/app";
+    const config = `import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 // Public web config — safe in the browser bundle. Fill from Firebase Console ->
@@ -71,22 +75,44 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const ${exportName} = getFirestore(app);
 `;
+    return factory
+      ? `${config}\nexport function ${exportName}() {\n  return getFirestore(app);\n}\n`
+      : `${config}export const ${exportName} = getFirestore(app);\n`;
   }
 
-  // express
-  return `import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+  // express — firebase-admin
+  if (factory) {
+    // Lazy factory: initialize once on first call, then return Firestore.
+    return `import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
 // Service-account credentials from env (see .env). PRIVATE_KEY often arrives
 // with escaped newlines from a single-line env value.
+export function ${exportName}(): Firestore {
+  if (getApps().length === 0) {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.PROJECT_ID,
+        clientEmail: process.env.CLIENT_EMAIL,
+        privateKey: process.env.PRIVATE_KEY?.replace(/\\\\n/g, "\\n"),
+      }),
+    });
+  }
+  return getFirestore();
+}
+`;
+  }
+
+  return `import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+
 if (getApps().length === 0) {
   initializeApp({
     credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\\\n/g, "\\n"),
+      projectId: process.env.PROJECT_ID,
+      clientEmail: process.env.CLIENT_EMAIL,
+      privateKey: process.env.PRIVATE_KEY?.replace(/\\\\n/g, "\\n"),
     }),
   });
 }
@@ -138,12 +164,3 @@ export class ${cls} extends BaseModel<${cls}> {
 }
 `;
 }
-
-/** Env keys Next.js needs for the admin singleton. */
-export const NEXT_ENV_KEYS: Record<string, string> = {
-  FIREBASE_PROJECT_ID: "your-project-id",
-  FIREBASE_CLIENT_EMAIL:
-    "firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com",
-  FIREBASE_PRIVATE_KEY:
-    '"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"',
-};
