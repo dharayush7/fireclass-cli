@@ -3,7 +3,7 @@
 All notable changes to `@dharayush7/fireclass-cli`. Adheres to
 [Keep a Changelog](https://keepachangelog.com) and [Semantic Versioning](https://semver.org).
 
-## [2.0.8] - 2026-07-09
+## [2.1.15] - 2026-07-09
 
 First public release of the Fireclass CLI.
 
@@ -12,9 +12,14 @@ First public release of the Fireclass CLI.
 - `init` — detects the framework (Next.js / React / Express) and package manager,
   then configures Fireclass: writes `fireclass.json`, installs the right package
   + validators, scaffolds a framework-specific fireclass file (and a firebase
-  file if missing), adds Next.js env, creates a models directory + sample Todo,
-  and patches `tsconfig` for decorators. Fully idempotent. Flags: `--yes`,
+  file if missing), adds env, creates a models directory + sample Todo, and
+  patches `tsconfig` for decorators. Fully idempotent. Flags: `--yes`,
   `--framework`, `--pm`, `--skip-install`.
+- Express uses a lazy **`getDb()` factory** (the common firebase-admin idiom) and
+  generates `createFireclass(getDb())`. The firebase export may be a value (`db`)
+  or a factory (`getDb()`), recorded as `firebase.factory` in `fireclass.json`;
+  Express also scaffolds `.env.example` (`PROJECT_ID` / `CLIENT_EMAIL` /
+  `PRIVATE_KEY`).
 - `model <Name>` — generates a minimal model with the correct collection name and
   relative import. Flags: `-c/--collection`, `--dir`, `--force`.
 - `doctor` — verifies config, installed dependencies, files, the firebase export,
@@ -22,7 +27,10 @@ First public release of the Fireclass CLI.
 - `list` (`ls`) — lists models (class + collection) in the models directory.
 - `config` — prints the resolved `fireclass.json`.
 - `--help` / `--version`, plus the `fc` bin alias.
-- 46 tests covering detection, templates, generation, idempotency, and each
+- `--yes` is fully non-interactive: it falls back to `npm` when the package
+  manager can't be detected instead of prompting (which crashed in non-TTY
+  environments).
+- 50 tests covering detection, templates, generation, idempotency, and each
   command's pure logic.
 
 ### tsconfig handling

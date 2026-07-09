@@ -1,4 +1,4 @@
-# fireclass-cli v2.0.8
+# fireclass-cli v2.1.15
 
 **`@dharayush7/fireclass-cli`** — the first public release of the Fireclass CLI. It configures a project to use Fireclass in one command, generates models, and health-checks the setup.
 
