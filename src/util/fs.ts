@@ -68,6 +68,28 @@ export function ensureGitignore(root: string, entry: string): boolean {
   return true;
 }
 
+/** Read-only check of the tsconfig decorator flags (for `doctor`). */
+export function tsconfigDecoratorStatus(
+  root: string,
+): "enabled" | "missing" | "manual" | "none" {
+  const path = join(root, "tsconfig.json");
+  if (!existsSync(path)) return "none";
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as {
+      compilerOptions?: {
+        experimentalDecorators?: boolean;
+        emitDecoratorMetadata?: boolean;
+      };
+    };
+    const o = parsed.compilerOptions ?? {};
+    return o.experimentalDecorators && o.emitDecoratorMetadata
+      ? "enabled"
+      : "missing";
+  } catch {
+    return "manual";
+  }
+}
+
 export type TsconfigPatchResult = "patched" | "already" | "manual" | "none";
 
 /**
