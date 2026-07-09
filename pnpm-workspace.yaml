@@ -3,3 +3,4 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@dharayush7/fireclass-core@2.0.8'
   - '@dharayush7/fireclass-react@2.0.8'
+  - '@dharayush7/fireclass-js@2.0.8'
