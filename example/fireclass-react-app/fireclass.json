@@ -1,6 +1,6 @@
 {
   "$schema": "https://fireclass.ayushdhar.com/schema.json",
-  "version": "2.1.16",
+  "version": "2.1.17",
   "framework": "react",
   "packageManager": "yarn",
   "package": "@dharayush7/fireclass-react",

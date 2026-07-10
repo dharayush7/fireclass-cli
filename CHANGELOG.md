@@ -3,6 +3,30 @@
 All notable changes to `@dharayush7/fireclass-cli`. Adheres to
 [Keep a Changelog](https://keepachangelog.com) and [Semantic Versioning](https://semver.org).
 
+## [2.1.17] - 2026-07-10
+
+### Documentation
+
+- Rebuilt the README from every website CLI command page and the complete
+  fireclass.json reference.
+- Added prerequisites, detection precedence, interactive and automated init
+  behavior, generated artifacts, idempotency, model naming rules, doctor checks
+  and exit codes, list discovery limits, configuration ownership, and framework
+  examples.
+- Added the Fireclass logo and removed npm and license shield badges.
+
+### Changed
+
+- Expanded npm discovery metadata for Firestore CLI, Firebase project setup,
+  scaffolding, model generation, diagnostics, Next.js, React, and Express.
+- Linked the npm homepage directly to the CLI documentation, included release
+  documentation in the package contents, and synchronized the reported CLI
+  version.
+
+### Compatibility
+
+- No command behavior or generated runtime API changed in this release.
+
 ## [2.1.16] - 2026-07-10
 
 ### Changed

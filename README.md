@@ -1,98 +1,357 @@
-# @dharayush7/fireclass-cli
+<p align="center">
+  <a href="https://fireclass.ayushdhar.com">
+    <img src="https://fireclass.ayushdhar.com/logo.png" alt="Fireclass logo" width="120" height="120" />
+  </a>
+</p>
 
-[![npm version](https://img.shields.io/npm/v/@dharayush7/fireclass-cli.svg)](https://www.npmjs.com/package/@dharayush7/fireclass-cli)
-[![license](https://img.shields.io/npm/l/@dharayush7/fireclass-cli.svg)](./LICENSE)
+<h1 align="center">@dharayush7/fireclass-cli</h1>
 
-The **Fireclass CLI** — configure a project to use [Fireclass](https://fireclass.ayushdhar.com)
-in one command, then generate models and health-check your setup. Detects your
-framework (Next.js / React / Express) and installs the right package.
+<p align="center">
+  Framework-aware Fireclass setup, typed model generation, configuration inspection, and project diagnostics.
+</p>
 
-## Usage
+<p align="center">
+  <a href="https://fireclass.ayushdhar.com/docs/cli">CLI documentation</a> |
+  <a href="https://fireclass.ayushdhar.com/docs/configuration/fireclass-json">Configuration</a> |
+  <a href="https://fireclass.ayushdhar.com/docs/packages">Packages</a> |
+  <a href="https://github.com/dharayush7/fireclass-cli">GitHub</a> |
+  <a href="https://www.npmjs.com/package/@dharayush7/fireclass-cli">npm</a>
+</p>
 
-```bash
-npx fireclass init          # or: npx @dharayush7/fireclass-cli init
-```
+The Fireclass CLI detects Next.js, React, and Express projects, installs the
+correct SDK, records project structure in <code>fireclass.json</code>, generates
+models, and verifies local setup.
 
-No install needed — run it with `npx`. The bin is also available as `fc`.
+The same CLI is available through the unscoped <code>fireclass</code> launcher.
 
-## Commands
+## Requirements
 
-| Command | What it does |
-|---------|--------------|
-| `init` | Detect framework + package manager, then configure Fireclass (see below) |
-| `model <Name>` | Generate a new model in the models directory |
-| `doctor` | Verify the setup (config, deps, tsconfig decorator flags, files) — exits non-zero on problems |
-| `list` (`ls`) | List the models found in the models directory |
-| `config` | Print the resolved `fireclass.json` |
-| `--help` / `-h` · `--version` / `-v` | Help and version |
+- Node.js 18 or newer.
+- A project containing <code>package.json</code>.
+- TypeScript for generated models.
+- Firebase project and framework-specific Firebase initialization completed
+  before <code>fireclass init</code>.
 
-### `init`
+Prepare the runtime first:
 
-Interactively (with prefilled, detected defaults):
+- [Next.js prerequisites and setup](https://fireclass.ayushdhar.com/docs/installation/nextjs)
+- [React prerequisites and setup](https://fireclass.ayushdhar.com/docs/installation/react)
+- [Express prerequisites and setup](https://fireclass.ayushdhar.com/docs/installation/express)
 
-1. **Framework** — auto-detected: `next` / `react` / `express`.
-2. **Package manager** — auto-detected from lockfile / `packageManager`.
-3. **Firestore file + export name** *(react/express only)* — default `src/lib/firebase.ts`, `db`. **Skipped for Next.js**, which reads admin credentials from env.
-4. **Fireclass file** — default `src/lib/fireclass.ts`.
-5. **Models directory** — default `src/models`.
+The CLI references existing Firebase files and never overwrites them.
 
-Then it generates:
+## Run the CLI
 
-- **`fireclass.json`** at the project root (the config the other commands read).
-- Installs the framework package + `class-validator` `class-transformer` `reflect-metadata` (+ `firebase` / `firebase-admin` / `server-only`).
-- A **fireclass file** wired for your framework (`createFireclass(db)` + hooks for React, `getFireclass()` `server-only` for Next.js, etc.). It exports only values bound to your app's Firestore instance.
-- A starter **firebase file** — only if you don't have one.
-- **Env** (`.env.local` + `.env.example`, gitignored) for Next.js.
-- A **models directory** and a sample `todo.ts`.
-- Patches **tsconfig** with `experimentalDecorators` + `emitDecoratorMetadata`.
+~~~bash
+npx fireclass --help
+npx fireclass init
+~~~
 
-Everything is **idempotent** — existing files are referenced/skipped, deps already
-present are not reinstalled, and it asks before overwriting.
+Equivalent commands:
 
-Flags: `--yes` (accept defaults, non-interactive), `--framework <f>`, `--pm <m>`,
-`--skip-install`.
+~~~bash
+npx @dharayush7/fireclass-cli init
+npx fireclass init
+~~~
 
-### `model <Name>`
+When installed locally, both binary names are available:
 
-```bash
-npx fireclass model User                 # -> src/models/user.ts, collection "users"
-npx fireclass model blog-post -c posts   # custom collection
-npx fireclass model Order --dir src/entities --force
-```
+~~~bash
+fireclass doctor
+fc doctor
+~~~
 
-Creates a minimal model (a `createdAt` field and `@Collection`). `BaseModel` is
-imported from your app's Fireclass file; `Collection` is imported directly from
-the configured SDK package. PascalCases the class, kebab-cases the filename, and
-pluralizes the collection.
+## Command overview
 
-## Import rule
+| Command | Purpose |
+| --- | --- |
+| <code>fireclass init</code> | Detect the framework and configure Fireclass |
+| <code>fireclass model &lt;Name&gt;</code> | Generate a typed model |
+| <code>fireclass doctor</code> | Check dependencies, paths, exports, and TypeScript decorators |
+| <code>fireclass list</code> | List discoverable models and collections |
+| <code>fireclass ls</code> | Alias for <code>list</code> |
+| <code>fireclass config</code> | Print the resolved <code>fireclass.json</code> |
 
-Keep the generated Fireclass file for initialized, app-scoped values such as
-`BaseModel`, `adapter`, `useQuery`, and `useDoc`. Import decorators and standalone
-helpers directly from your SDK package: `@dharayush7/fireclass-js`,
-`@dharayush7/fireclass-react`, or `@dharayush7/fireclass-ssr`.
+Global options:
 
-## `fireclass.json`
+| Option | Purpose |
+| --- | --- |
+| <code>-h, --help</code> | Print global or command help |
+| <code>-v, --version</code> | Print the CLI version |
 
-```jsonc
+Unknown commands, missing required arguments, and command failures exit
+non-zero.
+
+## Project resolution and detection
+
+Every command walks upward from the current directory to the nearest folder
+containing <code>package.json</code>. In a workspace, the nearest package
+controls the configuration.
+
+Framework detection reads dependencies and dev dependencies:
+
+1. <code>next</code> selects Next.js.
+2. <code>express</code> selects Express or Node.js.
+3. <code>react</code> plus <code>react-dom</code> selects React.
+
+Next.js wins over React because Next projects also declare React.
+
+Package-manager detection checks:
+
+1. The <code>packageManager</code> field.
+2. <code>pnpm-lock.yaml</code>, <code>yarn.lock</code>,
+   <code>bun.lockb</code>, <code>bun.lock</code>, then
+   <code>package-lock.json</code>.
+3. The package-manager user-agent value.
+
+Interactive mode lets you change detected values. Non-interactive mode falls
+back to npm when no package manager is detected.
+
+## fireclass init
+
+~~~bash
+fireclass init [options]
+~~~
+
+| Option | Purpose |
+| --- | --- |
+| <code>-y, --yes</code> | Accept detected defaults without prompts |
+| <code>--framework &lt;next\|react\|express&gt;</code> | Override framework detection |
+| <code>--pm &lt;pnpm\|yarn\|bun\|npm&gt;</code> | Override package-manager detection |
+| <code>--skip-install</code> | Generate configuration without installing dependencies |
+| <code>-h, --help</code> | Print command help |
+
+Interactive setup asks for:
+
+1. Framework and package manager.
+2. Firebase file and named export for React or Express.
+3. Fireclass entry file.
+4. Models directory.
+5. Permission before replacing an existing Fireclass entry.
+6. Permission before dependency installation.
+
+Projects with a <code>src</code> directory default to:
+
+~~~text
+src/lib/firebase.ts
+src/lib/fireclass.ts
+src/models
+~~~
+
+Projects without <code>src</code> default to:
+
+~~~text
+lib/firebase.ts
+lib/fireclass.ts
+models
+~~~
+
+For Firebase exports, enter a value such as <code>db</code> or a factory such
+as <code>getDb()</code>. Parentheses record <code>factory: true</code>, causing
+the generated binding to call the function.
+
+### Framework behavior
+
+| Framework | SDK | Firebase behavior |
+| --- | --- | --- |
+| Next.js | <code>@dharayush7/fireclass-ssr</code> | No Firebase file; credentials come from environment variables or ADC |
+| React | <code>@dharayush7/fireclass-react</code> | Firebase client SDK with a default <code>db</code> export |
+| Express | <code>@dharayush7/fireclass-js</code> | Firebase Admin with a default <code>getDb()</code> factory |
+
+All frameworks install <code>class-validator</code>,
+<code>class-transformer</code>, and <code>reflect-metadata</code>. React adds
+<code>firebase</code>; Express adds <code>firebase-admin</code>; Next.js adds
+<code>firebase-admin</code> and <code>server-only</code>.
+
+### Generated artifacts
+
+<code>init</code> writes or manages:
+
+- <code>fireclass.json</code> with the public schema URL, CLI version,
+  framework, package manager, SDK, paths, and Firebase export.
+- A framework-specific Fireclass entry exporting initialized
+  <code>BaseModel</code>, adapter, and React hooks where applicable.
+- A Firebase entry for React or Express only when the configured file is
+  missing.
+- A starter Todo model when it is missing.
+- Decorator flags in the effective TypeScript configuration.
+- Next.js <code>.env.local</code> and <code>.env.example</code>, or Express
+  <code>.env.example</code>.
+- Gitignore entries for private environment files.
+
+Generated Fireclass entries do not re-export SDK decorators or helpers.
+
+### Idempotency
+
+- Existing Firebase files are referenced and never overwritten.
+- Existing starter models are skipped.
+- Missing environment keys and gitignore entries are appended.
+- Existing Fireclass entries require interactive overwrite approval.
+- Existing configuration is displayed before interactive reconfiguration.
+- <code>--yes</code> rewrites configuration with detected or supplied values
+  while still skipping an existing Fireclass entry.
+
+Use explicit framework and package-manager options when automating configured
+projects:
+
+~~~bash
+npx fireclass init --yes --framework react --pm pnpm
+npx fireclass init --yes --framework express --pm npm --skip-install
+~~~
+
+## fireclass model
+
+~~~bash
+fireclass model [options] <name>
+~~~
+
+| Option | Purpose |
+| --- | --- |
+| <code>-c, --collection &lt;name&gt;</code> | Override the Firestore collection |
+| <code>--dir &lt;path&gt;</code> | Override the configured models directory for this command |
+| <code>--force</code> | Replace an existing model file |
+| <code>-h, --help</code> | Print command help |
+
+Naming examples:
+
+| Input | Class | File | Default collection |
+| --- | --- | --- | --- |
+| <code>User</code> | <code>User</code> | <code>user.ts</code> | <code>users</code> |
+| <code>user-profile</code> | <code>UserProfile</code> | <code>user-profile.ts</code> | <code>userprofiles</code> |
+| <code>Category</code> | <code>Category</code> | <code>category.ts</code> | <code>categories</code> |
+| <code>Status</code> | <code>Status</code> | <code>status.ts</code> | <code>status</code> |
+
+Pluralization is intentionally simple. Use <code>--collection</code> when the
+desired Firestore name differs.
+
+~~~bash
+npx fireclass model User
+npx fireclass model user-profile --collection user_profiles
+npx fireclass model Order --dir src/entities
+~~~
+
+The generated model imports <code>Collection</code> directly from the configured
+SDK and <code>BaseModel</code> from the local Fireclass entry. Express relative
+imports use a Node ESM-compatible <code>.js</code> suffix.
+
+<code>--force</code> replaces the entire target file; it does not merge fields.
+
+## fireclass doctor
+
+~~~bash
+fireclass doctor
+~~~
+
+Doctor performs local, read-only checks:
+
+| Check | Result |
+| --- | --- |
+| <code>fireclass.json</code> | Must exist and parse |
+| Runtime SDK | Must be declared in dependencies or dev dependencies |
+| Common dependencies | Validator, transformer, and metadata packages must be declared |
+| Framework dependencies | Firebase package and <code>server-only</code> where required |
+| Fireclass entry | Configured path must exist |
+| Firebase entry | React or Express path must exist |
+| Firebase export | Simple named variable/function export is inspected |
+| Models directory | Configured directory is inspected |
+| TypeScript decorators | Both required compiler flags are checked |
+
+Passed checks do not affect exit status. Warnings still exit successfully.
+Failed checks set exit code 1, making doctor suitable for CI.
+
+Doctor does not connect to Firebase, compile application source, test Security
+Rules or indexes, or execute models.
+
+## fireclass list
+
+~~~bash
+fireclass list
+fireclass ls
+~~~
+
+The command scans top-level TypeScript files in <code>models.dir</code>, excludes
+<code>index.ts</code>, sorts by filename, and looks for a class extending
+<code>BaseModel</code> plus a string-literal <code>@Collection</code>.
+
+~~~text
+User -> "users"  (user.ts)
+~~~
+
+Nested directories, computed collection names, decorator aliases, and unusual
+formatting are not executed or deeply parsed. An empty models directory is not
+an error.
+
+## fireclass config
+
+~~~bash
+fireclass config
+~~~
+
+Prints the nearest project's parsed <code>fireclass.json</code>. It never
+modifies the file and does not validate paths, exports, credentials, or the
+public schema. Run doctor after manual changes.
+
+## fireclass.json
+
+Every generated configuration references the public schema:
+
+~~~json
 {
-  "version": "2.1.16",
-  "framework": "next" | "react" | "express",
+  "$schema": "https://fireclass.ayushdhar.com/schema.json",
+  "version": "2.1.17",
+  "framework": "react",
   "packageManager": "pnpm",
-  "package": "@dharayush7/fireclass-ssr",
-  "firebase": { "path": "src/lib/firebase.ts", "export": "db" }, // null for Next.js
-  "fireclass": { "path": "src/lib/fireclass.ts" },
-  "models": { "dir": "src/models" }
+  "package": "@dharayush7/fireclass-react",
+  "firebase": {
+    "path": "src/lib/firebase.ts",
+    "export": "db",
+    "factory": false
+  },
+  "fireclass": {
+    "path": "src/lib/fireclass.ts"
+  },
+  "models": {
+    "dir": "src/models"
+  }
 }
-```
+~~~
 
-## The Fireclass suite
+Next.js uses <code>firebase: null</code>. Express normally records
+<code>getDb</code> with <code>factory: true</code>. Configuration contains paths
+and metadata only; never put Firebase credentials in this file.
 
-Installs one of: [`fireclass-js`](https://www.npmjs.com/package/@dharayush7/fireclass-js)
-(Express), [`fireclass-ssr`](https://www.npmjs.com/package/@dharayush7/fireclass-ssr)
-(Next.js), or [`fireclass-react`](https://www.npmjs.com/package/@dharayush7/fireclass-react)
-(React) — all built on [`fireclass-core`](https://www.npmjs.com/package/@dharayush7/fireclass-core).
+## Import ownership
+
+Keep generated local Fireclass files focused on app-bound values:
+
+- <code>BaseModel</code>
+- <code>adapter</code>
+- <code>useQuery</code> and <code>useDoc</code> for React
+
+Import decorators and standalone helpers directly from the runtime SDK:
+
+~~~ts
+import { Collection } from "@dharayush7/fireclass-js";
+import { serialize, runAction } from "@dharayush7/fireclass-ssr";
+import { ValidationFailedError } from "@dharayush7/fireclass-react";
+~~~
+
+## Documentation and examples
+
+- [CLI overview](https://fireclass.ayushdhar.com/docs/cli)
+- [init](https://fireclass.ayushdhar.com/docs/cli/init)
+- [model](https://fireclass.ayushdhar.com/docs/cli/model)
+- [doctor](https://fireclass.ayushdhar.com/docs/cli/doctor)
+- [list](https://fireclass.ayushdhar.com/docs/cli/list)
+- [config](https://fireclass.ayushdhar.com/docs/cli/config)
+- [fireclass.json reference](https://fireclass.ayushdhar.com/docs/configuration/fireclass-json)
+- [Express example](https://github.com/dharayush7/fireclass-cli/tree/main/example/fireclass-express-app)
+- [Next.js example](https://github.com/dharayush7/fireclass-cli/tree/main/example/fireclass-next-app)
+- [React example](https://github.com/dharayush7/fireclass-cli/tree/main/example/fireclass-react-app)
+
+See [CHANGELOG.md](./CHANGELOG.md) for version history and
+[RELEASE_NOTES.md](./RELEASE_NOTES.md) for the current release summary.
 
 ## License
 
-MIT © Ayush Dhar
+MIT. Copyright Ayush Dhar.
