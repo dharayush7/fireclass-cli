@@ -35,7 +35,10 @@ describe("createModelFile", () => {
     expect(src).toContain("class User extends BaseModel<User>");
     expect(src).toContain('@Collection("users")');
     expect(src).toContain("createdAt?: Date;");
-    expect(src).toContain('from "../lib/fireclass"');
+    expect(src).toContain('import { BaseModel } from "../lib/fireclass"');
+    expect(src).toContain(
+      'import { Collection } from "@dharayush7/fireclass-react"',
+    );
     expect(src).not.toContain("@IsString");
   });
 
@@ -52,6 +55,20 @@ describe("createModelFile", () => {
     });
     expect(res.path).toBe(join("src/entities", "post.ts"));
     expect(read(res.path)).toContain('@Collection("blog_posts")');
+  });
+
+  it("uses Node ESM local imports for Express models", () => {
+    const expressConfig: FireclassConfig = {
+      ...config,
+      framework: "express",
+      package: "@dharayush7/fireclass-js",
+    };
+    const res = createModelFile(root, expressConfig, "invoice");
+    const src = read(res.path);
+    expect(src).toContain(
+      'import { Collection } from "@dharayush7/fireclass-js"',
+    );
+    expect(src).toContain('import { BaseModel } from "../lib/fireclass.js"');
   });
 
   it("throws ModelExistsError when the file exists, unless force", () => {

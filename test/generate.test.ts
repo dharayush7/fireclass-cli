@@ -44,8 +44,14 @@ describe("applyInit — react", () => {
     expect(JSON.parse(read("fireclass.json")).framework).toBe("react");
     expect(read("src/lib/firebase.ts")).toContain("getFirestore(app)");
     expect(read("src/lib/fireclass.ts")).toContain("createFireclass(db)");
-    // model imports fireclass with the correct relative path
-    expect(read("src/models/todo.ts")).toContain('from "../lib/fireclass"');
+    expect(read("src/lib/fireclass.ts")).not.toContain("export {");
+    // Bound values stay local; decorators come directly from the SDK.
+    expect(read("src/models/todo.ts")).toContain(
+      'import { BaseModel } from "../lib/fireclass"',
+    );
+    expect(read("src/models/todo.ts")).toContain(
+      'import { Collection } from "@dharayush7/fireclass-react"',
+    );
 
     // install called with the react package + validators + firebase
     const [cmd, args] = runner.mock.calls[0];
@@ -81,6 +87,10 @@ describe("applyInit — express (getDb factory)", () => {
     await applyInit(root, expressConfig, { skipInstall: true });
     expect(read("src/lib/firebase.ts")).toContain("export function getDb(): Firestore");
     expect(read("src/lib/fireclass.ts")).toContain("createFireclass(getDb())");
+    expect(read("src/lib/fireclass.ts")).toContain('from "./firebase.js"');
+    expect(read("src/models/todo.ts")).toContain(
+      'import { BaseModel } from "../lib/fireclass.js"',
+    );
     // env.example (unprefixed admin keys) + gitignore .env, no .env.local
     expect(read(".env.example")).toContain("PROJECT_ID=");
     expect(read(".env.example")).toContain("CLIENT_EMAIL=");
@@ -97,6 +107,7 @@ describe("applyInit — express (getDb factory)", () => {
     const actions = await applyInit(root, expressConfig, { skipInstall: true });
     expect(actions.find((a) => a.label === "src/lib/firebase.ts")?.status).toBe("referenced");
     expect(read("src/lib/fireclass.ts")).toContain("createFireclass(getDb())");
+    expect(read("src/lib/fireclass.ts")).toContain('from "./firebase.js"');
   });
 });
 

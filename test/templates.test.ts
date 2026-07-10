@@ -13,18 +13,21 @@ describe("fireclassFileTemplate", () => {
     expect(out).toContain("createFireclass(db)");
     expect(out).toContain("useQuery, useDoc");
     expect(out).toContain('import { db } from "./firebase"');
+    expect(out).not.toContain("export {");
   });
 
-  it("express: createFireclass(db) + error handler", () => {
-    const out = fireclassFileTemplate("express", "./firebase", "db");
+  it("express: createFireclass(db) without SDK re-exports", () => {
+    const out = fireclassFileTemplate("express", "./firebase.js", "db");
     expect(out).toContain('from "@dharayush7/fireclass-js"');
-    expect(out).toContain("fireclassErrorHandler");
+    expect(out).toContain('import { db } from "./firebase.js"');
+    expect(out).not.toContain("fireclassErrorHandler");
+    expect(out).not.toContain("export {");
     expect(out).not.toContain("useQuery");
   });
 
   it("express factory: calls the exported getDb() function", () => {
-    const out = fireclassFileTemplate("express", "./firebase", "getDb", true);
-    expect(out).toContain('import { getDb } from "./firebase"');
+    const out = fireclassFileTemplate("express", "./firebase.js", "getDb", true);
+    expect(out).toContain('import { getDb } from "./firebase.js"');
     expect(out).toContain("createFireclass(getDb())");
   });
 
@@ -33,6 +36,8 @@ describe("fireclassFileTemplate", () => {
     expect(out).toContain('import "server-only"');
     expect(out).toContain("getFireclass()");
     expect(out).toContain('from "@dharayush7/fireclass-ssr"');
+    expect(out).not.toContain("serialize");
+    expect(out).not.toContain("export {");
     expect(out).not.toContain("./firebase");
   });
 });
@@ -60,17 +65,31 @@ describe("firebaseFileTemplate", () => {
 
 describe("model templates", () => {
   it("sample Todo has fields + validators", () => {
-    const out = sampleTodoTemplate("../lib/fireclass");
+    const out = sampleTodoTemplate(
+      "../lib/fireclass",
+      "@dharayush7/fireclass-react",
+    );
     expect(out).toContain("class Todo extends BaseModel<Todo>");
     expect(out).toContain('@Collection("todos")');
     expect(out).toContain("@IsString()");
-    expect(out).toContain('from "../lib/fireclass"');
+    expect(out).toContain('import { BaseModel } from "../lib/fireclass"');
+    expect(out).toContain(
+      'import { Collection } from "@dharayush7/fireclass-react"',
+    );
   });
   it("generic model has only createdAt and PascalCases the name", () => {
-    const out = modelTemplate("user-profile", "user-profiles", "../lib/fireclass");
+    const out = modelTemplate(
+      "user-profile",
+      "user-profiles",
+      "../lib/fireclass",
+      "@dharayush7/fireclass-js",
+    );
     expect(out).toContain("class UserProfile extends BaseModel<UserProfile>");
     expect(out).toContain('@Collection("user-profiles")');
     expect(out).toContain("createdAt?: Date;");
+    expect(out).toContain(
+      'import { Collection } from "@dharayush7/fireclass-js"',
+    );
     expect(out).not.toContain("@IsString");
   });
 });

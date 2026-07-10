@@ -83,9 +83,13 @@ export async function applyInit(
   const firebaseImport = config.firebase
     ? relativeImport(config.fireclass.path, config.firebase.path)
     : "";
+  const runtimeFirebaseImport =
+    config.framework === "express" && firebaseImport
+      ? `${firebaseImport}.js`
+      : firebaseImport;
   const fcContent = fireclassFileTemplate(
     config.framework,
-    firebaseImport,
+    runtimeFirebaseImport,
     config.firebase?.export ?? "db",
     config.firebase?.factory ?? false,
   );
@@ -104,9 +108,11 @@ export async function applyInit(
   ensureDir(join(root, config.models.dir));
   const todoRel = join(config.models.dir, "todo.ts");
   const todoImport = relativeImport(todoRel, config.fireclass.path);
+  const runtimeTodoImport =
+    config.framework === "express" ? `${todoImport}.js` : todoImport;
   const wroteTodo = writeIfAbsent(
     join(root, todoRel),
-    sampleTodoTemplate(todoImport),
+    sampleTodoTemplate(runtimeTodoImport, config.package),
   );
   actions.push({ label: todoRel, status: wroteTodo ? "created" : "skipped" });
 

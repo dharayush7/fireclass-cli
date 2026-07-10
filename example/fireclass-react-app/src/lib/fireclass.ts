@@ -3,5 +3,3 @@ import { createFireclass } from "@dharayush7/fireclass-react";
 import { db } from "./firebase";
 
 export const { BaseModel, useQuery, useDoc, adapter } = createFireclass(db);
-
-export { Collection, Subcollection } from "@dharayush7/fireclass-react";

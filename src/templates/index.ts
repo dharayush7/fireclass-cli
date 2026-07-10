@@ -3,8 +3,8 @@ import { FRAMEWORKS } from "../frameworks";
 import { toPascalCase } from "../util/paths";
 
 /**
- * The `lib/fireclass.ts` contents — the file that binds Fireclass and is
- * imported by every model. `firebaseImport` is the relative specifier to the
+ * The `lib/fireclass.ts` contents — the file that binds Fireclass and exports
+ * only app-scoped values. `firebaseImport` is the relative specifier to the
  * Firestore file (react/express); it is ignored for Next.js.
  */
 export function fireclassFileTemplate(
@@ -24,8 +24,6 @@ import { getFireclass } from "${pkg}";
 
 // Memoized firebase-admin singleton (credentials from env — see .env.local).
 export const { BaseModel, adapter } = getFireclass();
-
-export { Collection, Subcollection, serialize, serializeList, runAction } from "${pkg}";
 `;
   }
 
@@ -35,8 +33,6 @@ import { createFireclass } from "${pkg}";
 import { ${exportName} } from "${firebaseImport}";
 
 export const { BaseModel, useQuery, useDoc, adapter } = createFireclass(${accessor});
-
-export { Collection, Subcollection } from "${pkg}";
 `;
   }
 
@@ -46,8 +42,6 @@ import { createFireclass } from "${pkg}";
 import { ${exportName} } from "${firebaseImport}";
 
 export const { BaseModel, adapter } = createFireclass(${accessor});
-
-export { Collection, Subcollection, fireclassErrorHandler } from "${pkg}";
 `;
 }
 
@@ -122,9 +116,13 @@ export const ${exportName} = getFirestore();
 }
 
 /** The sample `todo.ts` created by `init`. */
-export function sampleTodoTemplate(fireclassImport: string): string {
-  return `import { IsBoolean, IsString } from "class-validator";
-import { BaseModel, Collection } from "${fireclassImport}";
+export function sampleTodoTemplate(
+  fireclassImport: string,
+  sdkPackage: string,
+): string {
+  return `import { Collection } from "${sdkPackage}";
+import { IsBoolean, IsString } from "class-validator";
+import { BaseModel } from "${fireclassImport}";
 
 @Collection("todos")
 export class Todo extends BaseModel<Todo> {
@@ -149,9 +147,11 @@ export function modelTemplate(
   name: string,
   collection: string,
   fireclassImport: string,
+  sdkPackage: string,
 ): string {
   const cls = toPascalCase(name);
-  return `import { BaseModel, Collection } from "${fireclassImport}";
+  return `import { Collection } from "${sdkPackage}";
+import { BaseModel } from "${fireclassImport}";
 
 @Collection("${collection}")
 export class ${cls} extends BaseModel<${cls}> {

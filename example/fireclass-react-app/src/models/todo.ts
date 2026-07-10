@@ -1,5 +1,6 @@
+import { Collection } from "@dharayush7/fireclass-react";
 import { IsBoolean, IsString } from "class-validator";
-import { BaseModel, Collection } from "../lib/fireclass";
+import { BaseModel } from "../lib/fireclass";
 
 @Collection("todos")
 export class Todo extends BaseModel<Todo> {

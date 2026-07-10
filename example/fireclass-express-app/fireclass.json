@@ -1,6 +1,6 @@
 {
   "$schema": "https://fireclass.ayushdhar.com/schema.json",
-  "version": "2.0.8",
+  "version": "2.1.16",
   "framework": "express",
   "packageManager": "pnpm",
   "package": "@dharayush7/fireclass-js",

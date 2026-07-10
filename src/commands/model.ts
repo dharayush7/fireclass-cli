@@ -34,8 +34,9 @@ export class ModelExistsError extends Error {
 
 /**
  * Create a minimal model file (only a `createdAt` field) under the models
- * directory, importing `BaseModel` / `Collection` from the configured fireclass
- * file. Pure and testable. Throws {@link ModelExistsError} unless `force`.
+ * directory. `BaseModel` comes from the configured app binding while
+ * `Collection` comes directly from the configured SDK package. Pure and
+ * testable. Throws {@link ModelExistsError} unless `force`.
  */
 export function createModelFile(
   root: string,
@@ -55,7 +56,9 @@ export function createModelFile(
   }
 
   const importPath = relativeImport(rel, config.fireclass.path);
-  writeFile(abs, modelTemplate(name, collection, importPath));
+  const runtimeImport =
+    config.framework === "express" ? `${importPath}.js` : importPath;
+  writeFile(abs, modelTemplate(name, collection, runtimeImport, config.package));
 
   return { className, collection, path: rel };
 }

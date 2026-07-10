@@ -40,7 +40,7 @@ Then it generates:
 
 - **`fireclass.json`** at the project root (the config the other commands read).
 - Installs the framework package + `class-validator` `class-transformer` `reflect-metadata` (+ `firebase` / `firebase-admin` / `server-only`).
-- A **fireclass file** wired for your framework (`createFireclass(db)` + hooks for React, `getFireclass()` `server-only` for Next.js, etc.).
+- A **fireclass file** wired for your framework (`createFireclass(db)` + hooks for React, `getFireclass()` `server-only` for Next.js, etc.). It exports only values bound to your app's Firestore instance.
 - A starter **firebase file** — only if you don't have one.
 - **Env** (`.env.local` + `.env.example`, gitignored) for Next.js.
 - A **models directory** and a sample `todo.ts`.
@@ -60,15 +60,23 @@ npx fireclass model blog-post -c posts   # custom collection
 npx fireclass model Order --dir src/entities --force
 ```
 
-Creates a minimal model (a `createdAt` field, `@Collection`, correct relative
-import to your fireclass file). PascalCases the class, kebab-cases the filename,
+Creates a minimal model (a `createdAt` field and `@Collection`). `BaseModel` is
+imported from your app's Fireclass file; `Collection` is imported directly from
+the configured SDK package. PascalCases the class, kebab-cases the filename, and
 pluralizes the collection.
+
+## Import rule
+
+Keep the generated Fireclass file for initialized, app-scoped values such as
+`BaseModel`, `adapter`, `useQuery`, and `useDoc`. Import decorators and standalone
+helpers directly from your SDK package: `@dharayush7/fireclass-js`,
+`@dharayush7/fireclass-react`, or `@dharayush7/fireclass-ssr`.
 
 ## `fireclass.json`
 
 ```jsonc
 {
-  "version": "2.0.8",
+  "version": "2.1.16",
   "framework": "next" | "react" | "express",
   "packageManager": "pnpm",
   "package": "@dharayush7/fireclass-ssr",

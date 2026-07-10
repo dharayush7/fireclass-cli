@@ -1,6 +1,6 @@
 {
   "name": "@dharayush7/fireclass-cli",
-  "version": "2.1.15",
+  "version": "2.1.16",
   "description": "The Fireclass CLI — configure a project (Next.js, React, or Express) to use Fireclass: init, generate models, and health-check your setup.",
   "license": "MIT",
   "author": {

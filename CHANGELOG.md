@@ -3,6 +3,27 @@
 All notable changes to `@dharayush7/fireclass-cli`. Adheres to
 [Keep a Changelog](https://keepachangelog.com) and [Semantic Versioning](https://semver.org).
 
+## [2.1.16] - 2026-07-10
+
+### Changed
+
+- Generated Fireclass files now export only values initialized against the
+  application's Firestore instance: `BaseModel`, `adapter`, and React hooks.
+- Removed generated re-exports of `Collection`, `Subcollection`, `serialize`,
+  `serializeList`, `runAction`, and `fireclassErrorHandler` from app-level
+  Fireclass files.
+- `init` and `model` now generate direct `Collection` imports from the selected
+  SDK package while keeping `BaseModel` imports pointed at the app binding.
+- Express local imports now use `.js` specifiers so generated TypeScript compiles
+  under Node's `NodeNext` ESM resolution.
+- Updated all CLI framework examples, planning docs, and website snippets to use
+  the same direct-import convention.
+
+### Migration
+
+- Existing apps can delete SDK re-export lines from their `lib/fireclass` file
+  and import decorators or standalone helpers directly from their runtime SDK.
+
 ## [2.1.15] - 2026-07-09
 
 First public release of the Fireclass CLI.

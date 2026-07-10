@@ -1,6 +1,24 @@
-# fireclass-cli v2.1.15
+# fireclass-cli v2.1.16
 
-**`@dharayush7/fireclass-cli`** — the first public release of the Fireclass CLI. It configures a project to use Fireclass in one command, generates models, and health-checks the setup.
+**`@dharayush7/fireclass-cli` v2.1.16** keeps generated app bindings focused on
+initialized values and makes SDK ownership explicit at every use site.
+
+## What changed
+
+- `fireclass init` no longer puts SDK re-exports in generated `lib/fireclass`
+  files. Those files now expose only app-bound `BaseModel`, `adapter`, and React
+  hooks.
+- The starter Todo and `fireclass model <Name>` import `Collection` directly
+  from the configured runtime package.
+- Express scaffolds use Node ESM-compatible `.js` local import specifiers.
+- Decorators (`Collection`, `Subcollection`) and standalone helpers
+  (`serialize`, `serializeList`, `runAction`, `fireclassErrorHandler`) should be
+  imported directly from `@dharayush7/fireclass-ssr`,
+  `@dharayush7/fireclass-react`, or `@dharayush7/fireclass-js`.
+- CLI examples and website documentation now follow the same convention.
+
+Existing apps do not need an SDK upgrade. Remove the re-export line from the
+local Fireclass file and update each consumer to import the SDK symbol directly.
 
 ## Usage
 
@@ -32,11 +50,11 @@ No install needed. The bin is also available as `fc`.
 |-----------|-------------------|----------------|
 | Next.js (App Router) | `@dharayush7/fireclass-ssr` | `server-only` + `getFireclass()`; env-based creds (no firebase file) |
 | React | `@dharayush7/fireclass-react` | `createFireclass(db)` + `useQuery` / `useDoc` |
-| Express / Node | `@dharayush7/fireclass-js` | `createFireclass(db)` + `fireclassErrorHandler` |
+| Express / Node | `@dharayush7/fireclass-js` | `createFireclass(db)` |
 
 ## Quality
 
-- **45 tests** covering detection, templates, idempotent generation, and each
+- **51 tests** covering detection, templates, idempotent generation, and each
   command's pure logic.
 - Verified end-to-end: real `init` / `model` / `doctor` / `list` runs on temporary
   React and Next.js projects.
